@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_03_081417) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_03_132412) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -37,34 +37,35 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_03_081417) do
     t.string "code", null: false, comment: "Legacy code_client"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "payment_terms_days", default: 15, null: false, comment: "Number of days for payment terms"
     t.index ["code"], name: "index_customers_on_code", unique: true
   end
 
   create_table "invoices", force: :cascade do |t|
-    t.bigint "bill_of_lading_id", comment: "Legacy numero_bl"
     t.bigint "customer_id", comment: "Legacy id_client"
+    t.string "bl_number", null: false, comment: "Foreign key to bill_of_ladings"
     t.decimal "amount", precision: 12, null: false, comment: "Legacy montant_facture"
     t.string "currency", default: "USD", null: false, comment: "Legacy devise"
     t.string "status", default: "draft", null: false, comment: "Legacy statut (draft, sent, paid, overdue)"
     t.datetime "due_date", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["bill_of_lading_id"], name: "index_invoices_on_bill_of_lading_id"
+    t.index ["bl_number"], name: "index_invoices_on_bl_number"
     t.index ["customer_id"], name: "index_invoices_on_customer_id"
   end
 
   create_table "refund_requests", force: :cascade do |t|
-    t.bigint "bill_of_lading_id", comment: "Legacy numero_bl"
+    t.string "bl_number", null: false, comment: "Legacy numero_bl"
     t.string "amount_requested", comment: "Legacy montant_demande"
     t.string "status", default: "PENDING", null: false, comment: "Legacy statut (PENDING, APPROVED, REJECTED, PAID)"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["bill_of_lading_id"], name: "index_refund_requests_on_bill_of_lading_id"
+    t.index ["bl_number"], name: "index_refund_requests_on_bl_number"
     t.index ["status"], name: "index_refund_requests_on_status"
   end
 
   add_foreign_key "bill_of_ladings", "customers"
-  add_foreign_key "invoices", "bill_of_ladings"
+  add_foreign_key "invoices", "bill_of_ladings", column: "bl_number", primary_key: "bl_number"
   add_foreign_key "invoices", "customers"
-  add_foreign_key "refund_requests", "bill_of_ladings"
+  add_foreign_key "refund_requests", "bill_of_ladings", column: "bl_number", primary_key: "bl_number"
 end

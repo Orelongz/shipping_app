@@ -3,5 +3,6 @@ FactoryBot.define do
     customer { association :customer }
     arrival_date { 5.days.from_now }
     freetime { 15 }
+    number_of_20ft_containers { 5 }
   end
 end
