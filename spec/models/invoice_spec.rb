@@ -100,4 +100,67 @@ RSpec.describe Invoice, type: :model do
       expect(invoice2.due_date.to_date).to eq((Date.current + 45.days).to_date)
     end
   end
+
+  describe '#log_invoice_creation after_create callback' do
+    let(:customer) { create(:customer) }
+    let(:bill_of_lading) { create(:bill_of_lading, customer: customer) }
+
+    it 'creates an AuditLog entry when an invoice is created' do
+      expect {
+        create(:invoice, customer: customer, bl_number: bill_of_lading.bl_number)
+      }.to change { AuditLog.count }.by(1)
+
+      audit_log = AuditLog.last
+
+      expect(audit_log.event_type).to eq('invoice_created')
+    end
+
+    it 'logs the correct invoice metadata' do
+      invoice = create(:invoice,
+        customer: customer,
+        bl_number: bill_of_lading.bl_number,
+        amount: 1500.00
+      )
+
+      audit_log = AuditLog.last
+
+      expect(audit_log.actor).to eq('system')
+      expect(audit_log.resource_id).to eq(invoice.id)
+      expect(audit_log.resource_type).to eq('Invoice')
+      expect(audit_log.metadata['amount']).to eq('1500')
+      expect(audit_log.metadata['customer_id']).to eq(customer.id)
+      expect(audit_log.metadata['bl_number']).to eq(bill_of_lading.bl_number)
+    end
+  end
+
+  describe '#enforce_immutable_amount on update' do
+    let(:customer) { create(:customer) }
+    let(:bill_of_lading) { create(:bill_of_lading, customer: customer) }
+    let(:invoice) { create(:invoice, customer: customer, bl_number: bill_of_lading.bl_number, amount: 1000.00) }
+
+    it 'prevents amount from being modified after creation' do
+      invoice.amount = 2000.00
+
+      expect(invoice.valid?).to be_falsey
+
+      expect(invoice.errors[:amount]).to include('cannot be modified after creation')
+    end
+  end
+
+  describe '#days_overdue' do
+    it 'returns the number of days past due' do
+      invoice = create(:invoice, due_date: 5.days.ago)
+      expect(invoice.days_overdue).to eq(5)
+    end
+
+    it 'returns 0 for invoices not yet due' do
+      invoice = create(:invoice, due_date: 5.days.from_now)
+      expect(invoice.days_overdue).to eq(0)
+    end
+
+    it 'returns 0 for invoices due today' do
+      invoice = create(:invoice, due_date: Date.current.to_datetime)
+      expect(invoice.days_overdue).to eq(0)
+    end
+  end
 end

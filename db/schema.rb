@@ -10,9 +10,21 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_03_162724) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_03_175307) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "audit_logs", force: :cascade do |t|
+    t.string "event_type", null: false
+    t.string "actor", null: false, comment: "system or customer identifier"
+    t.string "resource_type", null: false
+    t.bigint "resource_id", null: false, comment: "ID of the resource modified"
+    t.jsonb "metadata", default: {}, comment: "Additional context"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["event_type"], name: "index_audit_logs_on_event_type"
+    t.index ["resource_type", "resource_id"], name: "index_audit_logs_on_resource_type_and_resource_id"
+  end
 
   create_table "bill_of_ladings", force: :cascade do |t|
     t.bigint "customer_id", comment: "Legacy id_client"
