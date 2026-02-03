@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_03_132412) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_03_162724) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -38,6 +38,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_03_132412) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "payment_terms_days", default: 15, null: false, comment: "Number of days for payment terms"
+    t.string "api_token", null: false, comment: "API token for authenticating API requests"
+    t.index ["api_token"], name: "index_customers_on_api_token", unique: true
     t.index ["code"], name: "index_customers_on_code", unique: true
   end
 

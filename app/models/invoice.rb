@@ -13,6 +13,17 @@ class Invoice < ApplicationRecord
 
   # open invoice (any status other than 'paid').
   scope :open, -> { where.not(status: :paid) }
+  scope :overdue, ->(date = Date.current) do
+    where.not(status: %w[paid cancelled]).where("due_date < ?", date)
+  end
+
+  def days_overdue
+    overdue_days = (Date.current - due_date.to_date).to_i
+
+    overdue_days.positive? ? overdue_days : 0
+  end
+
+  private
 
   def set_due_date
     self.due_date ||= Date.current + customer.payment_terms_days.days
