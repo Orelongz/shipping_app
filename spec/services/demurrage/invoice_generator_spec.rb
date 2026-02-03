@@ -9,7 +9,7 @@ RSpec.describe Demurrage::InvoiceGenerator, type: :service do
   let!(:bill_of_lading_3) { create(:bill_of_lading, arrival_date: Date.yesterday, freetime: 0, customer: customer_2) }
 
   describe '.call' do
-    subject { described_class.call(customer: customer_1) }
+    subject { described_class.call(customer_id: customer_1.id) }
 
     context "when both bill of ladings have no existing invoices" do
       it 'returns a summary of created and skipped invoices and created totals' do
@@ -41,7 +41,7 @@ RSpec.describe Demurrage::InvoiceGenerator, type: :service do
     context "when bill of landings have zero containers" do
       let!(:bill_of_lading_3) { create(:bill_of_lading, arrival_date: Date.yesterday, freetime: 0, customer: customer_2, number_of_20ft_containers: 0) }
 
-      subject { described_class.call(customer: customer_2) }
+      subject { described_class.call(customer_id: customer_2.id) }
 
       it 'skips the bill of lading with zero containers' do
         expect { subject }.not_to change { Invoice.count }

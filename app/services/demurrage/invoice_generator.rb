@@ -2,18 +2,18 @@ module Demurrage
   class InvoiceGenerator
     class InvoiceGeneratorError < StandardError; end
 
-    def self.call(customer:, date: Date.yesterday)
+    def self.call(customer_id:, date: Date.yesterday)
       ActiveRecord::Base.transaction do
-        new(customer:, date:).generate_invoices
+        new(customer_id:, date:).generate_invoices
       end
     end
 
-    attr_reader :customer, :date, :created, :skipped
+    attr_reader :customer_id, :date, :created, :skipped
 
-    def initialize(customer:, date:)
+    def initialize(customer_id:, date:)
       @created = []
       @skipped = []
-      @customer = customer
+      @customer_id = customer_id
       @date = date.is_a?(Date) ? date : Date.parse(date.to_s)
     end
 
@@ -29,11 +29,13 @@ module Demurrage
 
     def overdue_bill_of_ladings
       @overdue_bill_of_ladings ||=
-        BillOfLading.where(customer: customer).became_overdue_on(date)
+        BillOfLading.where(customer_id: customer_id).became_overdue_on(date)
     end
 
     def create_or_skip_invoice(bill_of_lading)
-      created << create_invoice_for(bill_of_lading)
+      invoice = create_invoice_for(bill_of_lading)
+
+      created << ::InvoiceBlueprint.render_as_hash(invoice)
     rescue ActiveRecord::RecordInvalid, InvoiceGeneratorError => e
       skipped << {
         bl_number: bill_of_lading.bl_number,
@@ -49,7 +51,7 @@ module Demurrage
       raise InvoiceGeneratorError, "Bill of lading currently have zero containers" if bill_of_lading.total_number_of_containers.zero?
 
       Invoice.create!(
-        customer_id: customer.id,
+        customer_id: customer_id,
         amount: bill_of_lading.amount,
         bl_number: bill_of_lading.bl_number
       )
@@ -61,7 +63,7 @@ module Demurrage
         skipped: skipped,
         created_count: created.size,
         skipped_count: skipped.size,
-        total_amount: created.sum(&:amount)
+        total_amount: created.sum { |invoice| invoice[:amount] }
       }
     end
   end

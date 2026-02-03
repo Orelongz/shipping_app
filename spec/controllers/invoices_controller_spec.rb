@@ -60,4 +60,85 @@ RSpec.describe InvoicesController, type: :request do
       end
     end
   end
+
+  describe 'POST /invoices/generate' do
+    context 'with valid admin token' do
+      let(:customer) { create(:customer) }
+      let(:admin_token) { 'valid-admin-token' }
+
+      let(:mocked_invoice_generator_result) do
+        created = create_list(:invoice, 3, customer: customer, due_date: 5.days.ago)
+        skipped = create_list(:invoice, 2, customer: customer, due_date: 15.days.from_now)
+
+        {
+          created: created,
+          skipped: skipped,
+          created_count: created.size,
+          skipped_count: skipped.size,
+          total_amount: created.sum(&:amount)
+        }
+      end
+
+      before do
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('ADMIN_TOKEN').and_return(admin_token)
+      end
+
+      context 'with customer_id parameter' do
+        it 'calls Demurrage::InvoiceGenerator.call with customer_id' do
+          allow(Demurrage::InvoiceGenerator).to receive(:call).and_return(mocked_invoice_generator_result)
+
+          post '/invoices/generate',
+            params: { customer_id: customer.id },
+            headers: { 'X-Admin-Token' => admin_token }
+
+          expect(Demurrage::InvoiceGenerator).to have_received(:call).with(customer_id: customer.id.to_s)
+
+          expect(response).to have_http_status(:ok)
+        end
+      end
+
+      context 'without customer_id parameter' do
+        it 'returns 422 Unprocessable Entity' do
+          post '/invoices/generate', headers: { 'X-Admin-Token' => admin_token }
+
+          expect(response).to have_http_status(422)
+          expect(parsed_body['error']).to include('Missing customer_id parameter')
+        end
+
+        it 'does not call Demurrage::InvoiceGenerator.call' do
+          allow(Demurrage::InvoiceGenerator).to receive(:call)
+
+          post '/invoices/generate', headers: { 'X-Admin-Token' => admin_token }
+
+          expect(Demurrage::InvoiceGenerator).not_to have_received(:call)
+        end
+      end
+
+      context 'without admin token' do
+        it 'returns 403 Forbidden' do
+          post '/invoices/generate', params: { customer_id: 1 }
+
+          expect(response).to have_http_status(:forbidden)
+          expect(parsed_body['error']).to include('Invalid X-Admin-Token')
+        end
+      end
+
+      context 'with invalid admin token' do
+        before do
+          allow(ENV).to receive(:[]).and_call_original
+          allow(ENV).to receive(:[]).with('ADMIN_TOKEN').and_return('valid-admin-token')
+        end
+
+        it 'returns 403 Forbidden' do
+          post '/invoices/generate',
+            params: { customer_id: 1 },
+            headers: { 'X-Admin-Token' => 'wrong-token' }
+
+          expect(response).to have_http_status(:forbidden)
+          expect(parsed_body['error']).to include('Invalid X-Admin-Token')
+        end
+      end
+    end
+  end
 end

@@ -19,4 +19,14 @@ class ApplicationController < ActionController::Base
       render json: { error: "Invalid X-Api-Token" }, status: :unauthorized
     end
   end
+
+  def authenticate_admin!
+    admin_token = request.headers["X-Admin-Token"]
+
+    expected_token = ENV["ADMIN_TOKEN"]
+
+    if admin_token.blank? || admin_token != expected_token
+      render json: { error: "Invalid X-Admin-Token" }, status: :forbidden
+    end
+  end
 end
