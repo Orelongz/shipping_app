@@ -162,3 +162,6 @@ In production I would add:
 - Stricter header validation.
 - Bearer token VS passing api token as it is
 - closely consider fields that needs to be indexed based on future use cases
+- Better github workflow
+  - protecting the main branch from direct push
+  - creating branches and merging individual branches to the main branch
