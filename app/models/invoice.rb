@@ -1,7 +1,7 @@
 class Invoice < ApplicationRecord
   belongs_to :customer
 
-  belongs_to :bill_of_lading, foreign_key: :bl_number, primary_key: :bl_number
+  belongs_to :bill_of_lading, foreign_key: :bl_number
 
   STATUSES = %w[draft sent paid cancelled].freeze
 
