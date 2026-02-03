@@ -1,7 +1,7 @@
 class InvoicesController < ApplicationController
-  protect_from_forgery with: :null_session
+  skip_before_action :verify_authenticity_token
 
-  before_action :authenticate_customer!, only: %i[overdue]
+  before_action :authenticate_customer!, only: %i[overdue show]
   before_action :authenticate_admin!, only: %i[generate]
 
   # GET /invoices/overdue
@@ -24,5 +24,14 @@ class InvoicesController < ApplicationController
     result = Demurrage::InvoiceGenerator.call(customer_id: params[:customer_id])
 
     render json: { result: result }, status: :ok
+  end
+
+  # GET /invoices/:id
+  def show
+    invoice = Invoice.where(customer: current_customer).find(params[:id])
+
+    render json: InvoiceBlueprint.render(invoice), status: :ok
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: "Invoice not found" }, status: :not_found
   end
 end

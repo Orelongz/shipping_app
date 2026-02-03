@@ -141,4 +141,77 @@ RSpec.describe InvoicesController, type: :request do
       end
     end
   end
+
+  describe 'GET /invoices/:id' do
+    let(:customer1) { create(:customer, api_token: 'token-1') }
+    let(:customer2) { create(:customer, api_token: 'token-2') }
+
+    let(:bill_of_lading_1) { create(:bill_of_lading, customer: customer1) }
+    let(:bill_of_lading_2) { create(:bill_of_lading, customer: customer2) }
+
+    let!(:customer1_invoice) { create(:invoice, customer: customer1, bl_number: bill_of_lading_1.bl_number, amount: 1500, currency: 'USD', status: 'sent', due_date: 5.days.from_now) }
+    let!(:customer2_invoice) { create(:invoice, customer: customer2, bl_number: bill_of_lading_2.bl_number, amount: 2000, currency: 'USD', status: 'draft') }
+
+    context 'with valid customer token' do
+      context 'when accessing own invoice' do
+        subject { get "/invoices/#{customer1_invoice.id}", headers: { 'X-Api-Token' => customer1.api_token } }
+
+        it 'returns 200 OK with invoice details' do
+          subject
+
+          expect(response).to have_http_status(:ok)
+          expect(parsed_body['amount']).to eq(1500)
+          expect(parsed_body['currency']).to eq('USD')
+          expect(parsed_body['status']).to eq('sent')
+          expect(parsed_body['bl_number']).to eq(customer1_invoice.bl_number)
+        end
+
+        it 'includes all expected fields' do
+          subject
+
+          expect(parsed_body).to include('bl_number', 'amount', 'currency', 'status', 'due_date', 'days_overdue')
+        end
+      end
+
+      context 'when accessing another customer\'s invoice' do
+        subject { get "/invoices/#{customer2_invoice.id}", headers: { 'X-Api-Token' => customer1.api_token } }
+
+        it 'returns 404 Not Found' do
+          subject
+
+          expect(response).to have_http_status(:not_found)
+          expect(parsed_body['error']).to eq('Invoice not found')
+        end
+      end
+
+      context 'when invoice does not exist' do
+        subject { get "/invoices/99999", headers: { 'X-Api-Token' => customer1.api_token } }
+
+        it 'returns 404 Not Found' do
+          subject
+
+          expect(response).to have_http_status(:not_found)
+          expect(parsed_body['error']).to eq('Invoice not found')
+        end
+      end
+    end
+
+    context 'without token' do
+      it 'returns 401 Unauthorized' do
+        get "/invoices/#{customer1_invoice.id}"
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(parsed_body['error']).to include('Missing X-Api-Token')
+      end
+    end
+
+    context 'with invalid token' do
+      it 'returns 401 Unauthorized' do
+        get "/invoices/#{customer1_invoice.id}", headers: { 'X-Api-Token' => 'invalid-token' }
+
+        expect(response).to have_http_status(:unauthorized)
+        expect(parsed_body['error']).to include('Invalid X-Api-Token')
+      end
+    end
+  end
 end
