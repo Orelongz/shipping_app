@@ -1,4 +1,6 @@
 class InvoicesController < ApplicationController
+  protect_from_forgery with: :null_session
+
   before_action :authenticate_customer!, only: %i[overdue]
   before_action :authenticate_admin!, only: %i[generate]
 
